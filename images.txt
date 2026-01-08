@@ -11,6 +11,7 @@
 # - 镜像重命名格式: 源镜像=目标镜像
 #   示例: library/alpine:latest=alpine:latest （将 library/alpine:latest 重命名为 alpine:latest）
 
+docker:latest
 docker:cli
 docker:dind
 alpine:latest
