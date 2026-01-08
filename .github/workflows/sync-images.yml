@@ -1,0 +1,153 @@
+name: Sync Images
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      IMAGE:
+        description: '单镜像同步（可选）'
+        required: false
+      TARGET_REGISTRY:
+        description: '目标镜像仓库（可选，覆盖 Environment 配置）'
+        required: false
+      REGISTRY_USERNAME:
+        description: '目标 registry 用户名（可选，覆盖 Environment 配置）'
+        required: false
+      REGISTRY_PASSWORD:
+        description: '目标 registry 密码/Token（可选，覆盖 Environment 配置）'
+        required: false
+  schedule:
+    - cron: '0 */6 * * *'  # 每 6 小时自动运行一次
+
+jobs:
+  sync_images:
+    runs-on: ubuntu-latest
+    environment: production   # 可以改成 staging 或其他 Environment
+
+    container:
+      image: quay.io/skopeo/stable:latest
+      options: --entrypoint ""  # ⚠️ 覆盖默认 ENTRYPOINT，以便直接运行 skopeo
+
+    steps:
+      # -------------------------------
+      # 1️⃣ 拉取仓库代码
+      # -------------------------------
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      # -------------------------------
+      # 2️⃣ 决定目标 registry、用户名和密码
+      # 优先级：
+      # 1. 手工输入参数
+      # 2. Environment Secret
+      # 3. 默认 GHCR + GitHub Actor + GitHub Token
+      # -------------------------------
+      - name: Determine registry and credentials
+        run: |
+          # -------------------------------
+          # registry
+          # -------------------------------
+          if [ -n "${{ github.event.inputs.TARGET_REGISTRY }}" ]; then
+            # 手工触发输入
+            REGISTRY="${{ github.event.inputs.TARGET_REGISTRY }}"
+          elif [ -n "${{ secrets.TARGET_REGISTRY }}" ]; then
+            # Environment Secret
+            REGISTRY="${{ secrets.TARGET_REGISTRY }}"
+          else
+            # 默认 GHCR
+            REGISTRY="ghcr.io/${{ github.repository_owner }}"
+          fi
+
+          # -------------------------------
+          # username
+          # -------------------------------
+          if [ -n "${{ github.event.inputs.REGISTRY_USERNAME }}" ]; then
+            USERNAME="${{ github.event.inputs.REGISTRY_USERNAME }}"
+          elif [ -n "${{ secrets.REGISTRY_USERNAME }}" ]; then
+            USERNAME="${{ secrets.REGISTRY_USERNAME }}"
+          else
+            USERNAME="${{ github.actor }}"
+          fi
+
+          # -------------------------------
+          # password
+          # -------------------------------
+          if [ -n "${{ github.event.inputs.REGISTRY_PASSWORD }}" ]; then
+            PASSWORD="${{ github.event.inputs.REGISTRY_PASSWORD }}"
+          elif [ -n "${{ secrets.REGISTRY_PASSWORD }}" ]; then
+            PASSWORD="${{ secrets.REGISTRY_PASSWORD }}"
+          else
+            PASSWORD="${{ secrets.GITHUB_TOKEN }}"
+          fi
+
+          # -------------------------------
+          # IMAGE 可选，用于单镜像同步
+          # -------------------------------
+          IMAGE="${{ github.event.inputs.IMAGE }}"
+
+          echo ">>> Target registry: $REGISTRY"
+          echo ">>> Username: $USERNAME"
+          echo ">>> IMAGE: $IMAGE"
+
+          # 将变量写入 GitHub 环境变量
+          echo "REGISTRY=$REGISTRY" >> $GITHUB_ENV
+          echo "USERNAME=$USERNAME" >> $GITHUB_ENV
+          echo "PASSWORD=$PASSWORD" >> $GITHUB_ENV
+          echo "IMAGE=$IMAGE" >> $GITHUB_ENV
+
+      # -------------------------------
+      # 3️⃣ 登录到目标 registry
+      # -------------------------------
+      - name: Login to registry
+        run: |
+          skopeo login "$REGISTRY" -u "$USERNAME" -p "$PASSWORD"
+
+      # -------------------------------
+      # 4️⃣ 同步镜像逻辑
+      # - 支持单镜像同步或全量 images.txt
+      # - 支持 SRC=DST 格式
+      # - 支持无 = 时默认 SRC=DST
+      # -------------------------------
+      - name: Sync images
+        run: |
+          set -e
+          TARGET_IMAGE="$IMAGE"
+
+          # 定义同步函数
+          process_image() {
+            local line="$1"
+            local SRC DST TARGET
+
+            # 判断是否有重命名
+            if [[ "$line" == *"="* ]]; then
+              SRC="${line%%=*}"  # = 左边为源镜像
+              DST="${line#*=}"   # = 右边为目标镜像
+            else
+              SRC="$line"        # 无 = 则原样同步
+              DST="$line"
+            fi
+
+            TARGET="$REGISTRY/$DST"
+            echo ">>> Sync $SRC -> $TARGET"
+
+            # 同步镜像，--all 表示包括所有架构
+            skopeo copy --all docker://$SRC docker://$TARGET || true
+          }
+
+          # -------------------------------
+          # 单镜像同步
+          # -------------------------------
+          if [ -n "$TARGET_IMAGE" ]; then
+            process_image "$TARGET_IMAGE"
+          else
+            # -------------------------------
+            # 全量同步 images.txt
+            # -------------------------------
+            while IFS= read -r line; do
+              [ -z "$line" ] && continue     # 跳过空行
+              case "$line" in \#*) continue ;; esac  # 跳过注释行
+              process_image "$line"
+            done < images.txt
+          fi
