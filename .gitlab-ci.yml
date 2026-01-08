@@ -40,6 +40,8 @@ sync_images_from_external_to_gitlab:
           DST="$line"
         fi
       
+        # 构建源镜像和目标镜像的 URL
+        # github上ci同步，目标已经变成DST， 如果直接从三方仓库同步，可修改为SRC
         SOURCE="docker://$SOURCE_REGISTRY/$DST"
         TARGET="docker://$CI_REGISTRY_IMAGE/$DST"
         
