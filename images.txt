@@ -16,5 +16,5 @@ docker:cli
 docker:dind
 alpine:latest
 node:24-alpine
-amazoncorretto:25
+amazoncorretto:25-alpine
 maven:3-eclipse-temurin-25-alpine
