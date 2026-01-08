@@ -15,8 +15,10 @@ docker:latest
 docker:cli
 docker:dind
 alpine:latest
+skopeo/stable:latest
+quay.io/skopeo/stable:latest
 node:24-alpine
 amazoncorretto:25-alpine
 maven:3-eclipse-temurin-25-alpine
-registry.gitlab.com/security-products/semgrep:6=security-products/semgrep:6
-registry.gitlab.com/gitlab-org/ci-cd/codequality:latest=gitlab-org/ci-cd/codequality:latest
+registry.gitlab.com/security-products/semgrep:6
+registry.gitlab.com/gitlab-org/ci-cd/codequality:latest
