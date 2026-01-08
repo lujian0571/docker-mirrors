@@ -105,10 +105,11 @@ jobs:
           skopeo login "$REGISTRY" -u "$USERNAME" -p "$PASSWORD"
 
       # -------------------------------
-      # 4️⃣ 同步镜像逻辑
+      # 4️⃣ 同步镜像逻辑（带变化检测）
       # - 支持单镜像同步或全量 images.txt
       # - 支持 SRC=DST 格式
       # - 支持无 = 时默认 SRC=DST
+      # - 检查源镜像和目标镜像是否相同，如果相同则跳过同步
       # -------------------------------
       - name: Sync images
         run: |
@@ -118,7 +119,7 @@ jobs:
           # 定义同步函数
           process_image() {
             local line="$1"
-            local SRC DST TARGET
+            local SRC DST TARGET SOURCE_DIGEST TARGET_DIGEST
 
             # 判断是否有重命名
             if [[ "$line" == *"="* ]]; then
@@ -130,10 +131,33 @@ jobs:
             fi
 
             TARGET="$REGISTRY/$DST"
-            echo ">>> Sync $SRC -> $TARGET"
+            echo ">>> Check $SRC -> $TARGET"
+
+            # 获取源镜像摘要
+            SOURCE_DIGEST=$(skopeo inspect docker://$SRC --format '{{.Digest}}' 2>/dev/null) || {
+              echo "❌ Cannot inspect source image $SRC"
+              return 1
+            }
+
+            # 获取目标镜像摘要（如果存在）
+            TARGET_DIGEST=$(skopeo inspect docker://$TARGET --format '{{.Digest}}' 2>/dev/null) || {
+              # 目标镜像不存在，需要同步
+              echo "⚠️ Target image $TARGET does not exist, will sync"
+              SOURCE_DIGEST="unknown"  # 设置为不同值以触发同步
+              TARGET_DIGEST="missing"
+            }
+
+            # 比较摘要，如果相同则跳过同步
+            if [ "$SOURCE_DIGEST" = "$TARGET_DIGEST" ]; then
+              echo "ℹ️  Source and target digests match, skipping sync"
+              return 0
+            fi
+
+            echo ">>> Digests differ, syncing $SRC -> $TARGET (Source: $SOURCE_DIGEST, Target: $TARGET_DIGEST)"
 
             # 同步镜像，--all 表示包括所有架构
             skopeo copy --all docker://$SRC docker://$TARGET || true
+            echo "✔ Synced $SRC -> $TARGET"
           }
 
           # -------------------------------
