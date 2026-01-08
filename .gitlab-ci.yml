@@ -1,0 +1,74 @@
+# GitLab CI 配置文件
+# 用于将 GHCR 或阿里云的镜像同步到 GitLab 仓库
+
+stages:
+  - sync
+
+# 同步镜像作业 - 从 GHCR/阿里云拉取镜像到 GitLab 仓库
+sync_images_from_external_to_gitlab:
+  stage: sync
+  image:
+    name: quay.io/skopeo/stable:latest
+    entrypoint: [""]        # ⚠️ 覆盖 ENTRYPOINT
+  rules:
+    # 定时触发 pipeline
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+    # 提交到默认分支触发
+    - if: $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH
+  script:
+    # 登录到 GitLab Registry
+    - skopeo login "$CI_REGISTRY" -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD"
+
+    # 循环读取 images.txt 并同步
+    - |
+      set -e
+      
+      # 从环境变量获取源仓库前缀，如果没有则使用默认值
+      SOURCE_REGISTRY="${SOURCE_REGISTRY:-ghcr.io/lujian0571}"
+      
+      while IFS= read -r line; do
+        # 去空行
+        [ -z "$line" ] && continue
+        # 去注释
+        case "$line" in \#*) continue ;; esac
+      
+        if echo "$line" | grep -q '='; then
+          SRC="${line%%=*}"
+          DST="${line#*=}"
+        else
+          SRC="$line"
+          DST="$line"
+        fi
+      
+        SOURCE="docker://$SOURCE_REGISTRY/$DST"
+        TARGET="docker://$CI_REGISTRY_IMAGE/$DST"
+        
+        echo ">>> SOURCE : $SOURCE"
+        echo ">>> TARGET : $TARGET"
+      
+        # 取源镜像 digest
+        SRC_DIGEST=$(skopeo inspect --format '{{.Digest}}' $SOURCE 2>/dev/null)
+        if [ $? -ne 0 ]; then
+          echo "❌ Source image $SOURCE does not exist, skipping..."
+          continue
+        fi
+        
+        echo ">>> SRC DIGEST: $SRC_DIGEST"
+      
+        # 尝试取目标镜像 digest（不存在不算错）
+        if DST_DIGEST=$(skopeo inspect --format '{{.Digest}}' $TARGET 2>/dev/null); then
+          echo ">>> DST DIGEST: $DST_DIGEST"
+      
+          if [ "$SRC_DIGEST" = "$DST_DIGEST" ]; then
+            echo "=== Skip (digest identical)"
+            continue
+          fi
+        else
+          echo ">>> TARGET not exists in GitLab registry, will sync"
+        fi
+      
+        echo ">>> Sync $SOURCE -> $TARGET"
+        skopeo copy --all $SOURCE $TARGET
+        echo "✔ Synced : $SOURCE -> $TARGET"
+      
+      done < images.txt

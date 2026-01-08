@@ -10,18 +10,28 @@
 - **多平台支持**：使用 Skopeo 工具同步所有架构的镜像
 - **智能同步**：自动比较源镜像和目标镜像的摘要（digest），仅在镜像发生变化时才执行同步
 - **本地拉取**：提供脚本从镜像仓库拉取镜像到本地运行时
+- **多平台 CI 支持**：支持 GitHub Actions 和 GitLab CI 实现双向同步
 
 ## 工作流程
 
-### 自动同步
+### GitHub Actions - 外部镜像同步到目标仓库
+
+GitHub Actions 工作流用于将外部镜像（如 Docker Hub 镜像）同步到目标仓库（GHCR 或阿里云）：
 
 - **定时触发**：每 6 小时运行一次 (`0 */6 * * *`)
 - **推送触发**：当代码推送到 main 分支时自动运行
 - **手动触发**：支持通过 GitHub Actions 界面手动触发
 
+### GitLab CI - 从外部仓库同步到 GitLab
+
+GitLab CI 工作流用于将外部仓库（GHCR 或阿里云）的镜像同步到 GitLab 仓库：
+
+- **定时触发**：根据 GitLab 项目计划任务配置
+- **推送触发**：当代码推送到默认分支时自动运行
+
 ### 配置参数
 
-工作流支持以下参数：
+GitHub Actions 工作流支持以下参数：
 
 - `IMAGE`：指定单个镜像同步（可选），格式如 `alpine:latest` 或 `library/alpine:latest=alpine:latest`
 - `TARGET_REGISTRY`：目标镜像仓库地址（可选），格式为 `<registry-url>[/<namespace>]`，例如 `ghcr.io/lujian0571` 或 `my-registry.com/my-namespace`
@@ -103,6 +113,32 @@ library/maven:3.9=library/maven:3.9
    - `alpine:latest`：同步 alpine:latest 镜像
    - `library/alpine:latest=alpine:latest`：将 library/alpine:latest 重命名为 alpine:latest 同步
 
+### GitHub Actions 配置
+
+GitHub Actions 用于将外部镜像同步到目标仓库（如 GHCR 或阿里云）：
+
+1. 在 GitHub 仓库的 Settings > Secrets and variables > Actions 中配置以下变量（可选）：
+   - `TARGET_REGISTRY`：目标仓库地址
+   - `REGISTRY_USERNAME`：目标仓库用户名
+   - `REGISTRY_PASSWORD`：目标仓库密码/Token
+
+2. GitHub Actions 包含一个作业：
+   - `sync_images`：将外部镜像同步到目标仓库
+
+### GitLab CI 配置
+
+GitLab CI 用于将外部仓库（GHCR 或阿里云）的镜像同步到 GitLab 仓库：
+
+1. 在 GitLab 项目中启用 CI/CD 功能
+2. 配置 GitLab Runner
+3. 在 GitLab 项目的 Settings > CI/CD > Variables 中设置以下变量：
+   - `SOURCE_REGISTRY`：源仓库地址（默认：ghcr.io/lujian0571）
+   - `CI_REGISTRY_USER`：GitLab 仓库用户名
+   - `CI_REGISTRY_PASSWORD`：GitLab 仓库密码/Token
+
+4. GitLab CI 包含一个作业：
+   - `sync_images_from_external_to_gitlab`：将外部仓库的镜像同步到 GitLab 仓库
+
 ### 本地拉取脚本
 
 使用 [pull.sh](./pull.sh) 脚本可以从镜像仓库拉取镜像到本地：
@@ -142,6 +178,7 @@ library/maven:3.9=library/maven:3.9
 
 - **Skopeo**：用于镜像复制和同步
 - **GitHub Actions**：CI/CD 自动化
+- **GitLab CI**：GitLab 持续集成
 - **Bash**：本地脚本
 
 ## 仓库结构
@@ -151,6 +188,7 @@ library/maven:3.9=library/maven:3.9
 ├── pull.sh             # 本地拉取脚本
 ├── .github/workflows/
 │   └── sync-images.yml # GitHub Actions 工作流
+├── .gitlab-ci.yml      # GitLab CI 配置
 ├── LICENSE             # MIT License
 └── README.md           # 项目说明
 ```
