@@ -1,3 +1,10 @@
+# Docker 镜像同步工具
+# GitLab CI 配置文件
+# 作者: lujian
+# 邮箱: lujian0571@gmail.com
+# 仓库：https://github.com/lujian0571/docker-mirrors
+# 描述: 用于将 GHCR 或阿里云的镜像同步到 GitLab 仓库
+---
 # GitLab CI 配置文件
 # 用于将 GHCR 或阿里云的镜像同步到 GitLab 仓库
 

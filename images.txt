@@ -1,3 +1,16 @@
+# Docker 镜像列表
+# 作者: lujian
+# 邮箱: lujian0571@gmail.com
+# 仓库：https://github.com/lujian0571/docker-mirrors
+# 描述: 此文件包含需要同步的 Docker 镜像列表
+# 格式说明:
+# - 每行一个镜像
+# - 支持注释行（以 # 开头）
+# - 直接镜像名称格式（不重命名）: 镜像名:标签
+#   示例: alpine:latest （将 alpine:latest 同步，不改变名称）
+# - 镜像重命名格式: 源镜像=目标镜像
+#   示例: library/alpine:latest=alpine:latest （将 library/alpine:latest 重命名为 alpine:latest）
+
 docker:cli
 docker:dind
 alpine:latest

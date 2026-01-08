@@ -1,3 +1,10 @@
+# Docker 镜像同步工具
+# GitHub Actions 工作流配置文件
+# 作者: lujian
+# 邮箱: lujian0571@gmail.com
+# 仓库：https://github.com/lujian0571/docker-mirrors
+# 描述: 用于将外部镜像同步到目标仓库（GHCR 或阿里云）
+---
 name: Sync Images
 
 on:
