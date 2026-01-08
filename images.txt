@@ -15,7 +15,6 @@ docker:latest
 docker:cli
 docker:dind
 alpine:latest
-skopeo/stable:latest
 quay.io/skopeo/stable:latest
 node:24-alpine
 amazoncorretto:25-alpine
