@@ -23,8 +23,8 @@
 
 工作流支持以下参数：
 
-- `IMAGE`：指定单个镜像同步（可选）
-- `TARGET_REGISTRY`：目标镜像仓库地址（可选）
+- `IMAGE`：指定单个镜像同步（可选），格式如 `alpine:latest` 或 `library/alpine:latest=alpine:latest`
+- `TARGET_REGISTRY`：目标镜像仓库地址（可选），格式为 `<registry-url>[/<namespace>]`，例如 `ghcr.io/lujian0571` 或 `my-registry.com/my-namespace`
 - `REGISTRY_USERNAME`：目标仓库用户名（可选）
 - `REGISTRY_PASSWORD`：目标仓库密码/Token（可选）
 
@@ -32,9 +32,40 @@
 
 参数优先级从高到低：
 
-1. 手动输入参数
+1. 手工输入参数
 2. Environment Secret
 3. 默认值（GHCR + GitHub 用户名 + GitHub Token）
+
+### 阿里云容器镜像服务配置示例
+
+如果您使用阿里云容器镜像服务（ACR），请按以下方式配置：
+
+1. 在 GitHub 仓库的 Secrets 中配置：
+   - `TARGET_REGISTRY`：`<instance-id>.cr.aliyuncs.com/<your-namespace>` （替换为您的阿里云镜像仓库地址和命名空间）
+   - `REGISTRY_USERNAME`：阿里云 ACR 用户名
+   - `REGISTRY_PASSWORD`：阿里云 ACR 访问凭证/Token
+
+2. 阿里云容器镜像服务分为个人版和企业版：
+   - **个人版**（免费）：使用公共实例，格式为 `registry.cn-<region>.aliyuncs.com/<your-namespace>`
+     - 华东1（杭州）：`registry.cn-hangzhou.aliyuncs.com/<your-namespace>`
+     - 华北1（北京）：`registry.cn-beijing.aliyuncs.com/<your-namespace>`
+     - 华南1（深圳）：`registry.cn-shenzhen.aliyuncs.com/<your-namespace>`
+     - 华东2（上海）：`registry.cn-shanghai.aliyuncs.com/<your-namespace>`
+     - 西南1（成都）：`registry.cn-chengdu.aliyuncs.com/<your-namespace>`
+     - 中国香港：`registry.cn-hongkong.aliyuncs.com/<your-namespace>`
+   
+   - **企业版**：使用专有实例，格式为 `<your-instance-id>.registry.aliyuncs.com/<your-namespace>`
+     - 需要在阿里云控制台创建专属实例，获得唯一的实例ID
+
+3. 其他地域支持（根据实际可用区选择）：
+   - 新加坡：`registry.ap-southeast-1.aliyuncs.com/<your-namespace>`
+   - 东京：`registry.ap-northeast-1.aliyuncs.com/<your-namespace>`
+   - 弗吉尼亚：`registry.us-west-1.aliyuncs.com/<your-namespace>`
+   - 法兰克福：`registry.eu-central-1.aliyuncs.com/<your-namespace>`
+
+其中 `<your-namespace>` 是您在阿里云容器镜像服务中创建的命名空间，用于组织和管理您的镜像。
+
+**阿里云容器镜像服务控制台地址**：[https://cr.console.aliyun.com/](https://cr.console.aliyun.com/)
 
 ## 智能同步机制
 
@@ -60,6 +91,17 @@ library/maven:3.9=library/maven:3.9
 支持两种格式：
 - `镜像名:标签`：直接同步
 - `源镜像=目标镜像`：镜像重命名映射
+
+### 单镜像同步
+
+可以通过 GitHub Actions 手动触发单镜像同步：
+
+1. 进入仓库的 Actions 页面
+2. 选择 "Sync Images" 工作流
+3. 点击 "Run workflow"
+4. 在 `IMAGE` 字段中输入要同步的镜像名称，例如：
+   - `alpine:latest`：同步 alpine:latest 镜像
+   - `library/alpine:latest=alpine:latest`：将 library/alpine:latest 重命名为 alpine:latest 同步
 
 ### 本地拉取脚本
 
