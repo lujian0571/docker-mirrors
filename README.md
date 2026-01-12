@@ -86,6 +86,10 @@ GitHub Actions 工作流支持以下参数：
 
 ## 使用方法
 
+### 已同步镜像列表
+
+可在 [GitHub Packages](https://github.com/lujian0571?tab=packages&repo_name=docker-mirrors) 查看已同步的镜像。
+
 ### 镜像列表配置
 
 在 [images.txt](./images.txt) 文件中配置需要同步的镜像，支持以下格式：
@@ -209,4 +213,4 @@ GitLab CI 用于将外部仓库（GHCR 或阿里云）的镜像同步到 GitLab 
 
 - lujian
 - Email: lujian0571@gmail.com
-- GitHub: lujian0571￼
+- GitHub: lujian0571
